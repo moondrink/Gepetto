@@ -9,6 +9,7 @@ import openai
 
 from gepetto.models.base import LanguageModel
 import gepetto.config
+from gepetto.models import SparkApi
 
 _ = gepetto.config.translate.gettext
 
@@ -97,3 +98,63 @@ class GPT(LanguageModel):
         t = threading.Thread(target=self.query_model, args=[query, cb, additional_model_options])
         t.start()
 
+class Spark(LanguageModel):
+    def __init__(self, model):
+        self.model = model
+        # Get API key
+        self.api_key = gepetto.config.parsed_ini.get('SparkAI', 'API_KEY')
+        self.appid = gepetto.config.parsed_ini.get('SparkAI', 'appid')
+        self.api_secret = gepetto.config.parsed_ini.get('SparkAI', 'api_secret')
+        self.domain = gepetto.config.parsed_ini.get('SparkAI', 'domain')
+        self.url = gepetto.config.parsed_ini.get('SparkAI', 'url')
+
+    def __str__(self):
+        return self.model
+
+    def query_model(self, query, cb, additional_model_options=None):
+        """
+        Function which sends a query to gpt-3.5-turbo or gpt-4 and calls a callback when the response is available.
+        Blocks until the response is received
+        :param query: The request to send to gpt-3.5-turbo or gpt-4
+        :param cb: The function to which the response will be passed to.
+        :param additional_model_options: Additional parameters used when creating the model object. Typically, for
+        OpenAI, response_format={"type": "json_object"}.
+        """
+        if additional_model_options is None:
+            additional_model_options = {}
+        try:
+            text = []
+            jsoncon = {}
+            jsoncon["role"] = 'user'
+            jsoncon["content"] = query
+            text.append(jsoncon)
+            SparkApi.main(self.appid, self.api_key, self.api_secret, self.url, self.domain, text)
+            ida_kernwin.execute_sync(functools.partial(cb, response=SparkApi.answer),
+                                     ida_kernwin.MFF_WRITE)
+        except openai.BadRequestError as e:
+            # Context length exceeded. Determine the max number of tokens we can ask for and retry.
+            m = re.search(r'maximum context length is \d+ tokens, however you requested \d+ tokens', str(e))
+            if m:
+                print(_("Unfortunately, this function is too big to be analyzed with the model's current API limits."))
+            else:
+                print(_("General exception encountered while running the query: {error}").format(error=str(e)))
+        except openai.OpenAIError as e:
+            print(_("{model} could not complete the request: {error}").format(model=self.model, error=str(e)))
+        except Exception as e:
+            print(_("General exception encountered while running the query: {error}").format(error=str(e)))
+
+    # -----------------------------------------------------------------------------
+
+    def query_model_async(self, query, cb, additional_model_options=None):
+        """
+        Function which sends a query to {model} and calls a callback when the response is available.
+        :param query: The request to send to {model}
+        :param cb: Tu function to which the response will be passed to.
+        :param additional_model_options: Additional parameters used when creating the model object. Typically, for
+        OpenAI, response_format={"type": "json_object"}.
+        """
+        if additional_model_options is None:
+            additional_model_options = {}
+        print(_("Request to {model} sent...").format(model=str(gepetto.config.model)))
+        t = threading.Thread(target=self.query_model, args=[query, cb, additional_model_options])
+        t.start()
