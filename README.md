@@ -79,3 +79,15 @@ you can contribute to the project by adding it yourself! The translation portal 
 - [Hex Rays](https://hex-rays.com/), the makers of IDA for their lightning fast support
 - [Kaspersky](https://kaspersky.com), for initially funding this project
 - [HarfangLab](https://harfanglab.io/), the current backer making this work possible
+
+## 讯飞星火SparkAPI
+
+官网:https://xinghuo.xfyun.cn/sparkapi
+
+个人可以免费申请V3.0模型的200万token
+
+V3.0的domain是`generalv3`，url是`ws://spark-api.xf-yun.com/v3.1/chat`
+
+在服务接口认证信息可以找到自己的`APPID`,`APISecret`,`APIKey`，需要将这些参数填写到`gepetto/config.ini`
+
+另外还需要安装`websocket-client`模块。
